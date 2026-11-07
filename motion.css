@@ -1,0 +1,337 @@
+/* ============================================================
+   Оранжерея — мягкая motion-система
+   Scroll choreography, parallax and tactile micro-interactions.
+   Всё построено на transform/opacity, чтобы не дёргать layout.
+   ============================================================ */
+
+:root {
+  --motion-spring: cubic-bezier(.16, 1, .3, 1);
+  --motion-smooth: cubic-bezier(.22, .78, .24, 1);
+  --motion-fast: 220ms;
+  --motion-gentle: 420ms;
+  --motion-distance: 22px;
+}
+
+/* Тонкая линия прогресса просмотра — как у product-storytelling страниц. */
+.motion-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10001;
+  height: 2px;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--rose-deep), var(--gold), var(--forest));
+  box-shadow: 0 0 18px rgba(178, 75, 103, .42);
+}
+
+/* Первый экран появляется слоями, а не одним резким блоком. */
+.js .hero__eyebrow,
+.js .hero__lead,
+.js .hero__actions,
+.js .facts,
+.js .hero__visual,
+.js .hero__foot {
+  animation: motion-rise .95s var(--motion-spring) both;
+}
+.js .hero__eyebrow { animation-delay: 80ms; }
+.js .hero__lead { animation-delay: 420ms; }
+.js .hero__actions { animation-delay: 520ms; }
+.js .facts { animation-delay: 650ms; }
+/* Opacity-only entrance: transform stays free for the scroll parallax. */
+.js .hero__visual { animation: motion-hero-fade 1.25s var(--motion-spring) backwards; animation-delay: 170ms; }
+.js .hero__foot { animation-delay: 850ms; }
+
+.js .hero__line {
+  clip-path: inset(0 0 100% 0);
+  animation: motion-line-reveal 1s var(--motion-spring) both;
+}
+.js .hero__line:nth-child(1) { animation-delay: 180ms; }
+.js .hero__line:nth-child(2) { animation-delay: 285ms; }
+.js .hero__line:nth-child(3) { animation-delay: 390ms; }
+
+@keyframes motion-rise {
+  from { opacity: 0; transform: translate3d(0, 22px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes motion-line-reveal {
+  from { opacity: 0; transform: translate3d(0, 34px, 0); clip-path: inset(0 0 100% 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); clip-path: inset(0 0 0 0); }
+}
+@keyframes motion-hero-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Scroll-linked depth on the hero. Keep the layer isolated for smooth scrolling. */
+.hero__visual,
+.arch__panel,
+.arch__photo {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform;
+}
+.hero__visual { transform: translate3d(0, calc(var(--hero-depth, 0) * -1px), 0); }
+.arch__panel { transform: translate3d(0, calc(var(--arch-depth, 0) * -1px), 0); }
+.arch__photo { transform: translate3d(0, calc(var(--photo-depth, 0) * 1px), 0) scale(1.04); }
+
+/* Section reveal: clip-path adds the clean, premium product-page feel. */
+.js .reveal {
+  transition:
+    opacity .95s var(--motion-spring),
+    transform .95s var(--motion-spring),
+    clip-path 1.1s var(--motion-spring);
+  clip-path: inset(0 0 14% 0 round 12px);
+}
+.js .reveal.is-in { clip-path: inset(0 0 0 0 round 0); }
+
+/* Art enters just after its card shell. */
+.js .card__art,
+.js .season__panel,
+.js .map {
+  clip-path: inset(7% 0 7% 0 round 999px 999px 22px 22px);
+  transition: clip-path 1.1s var(--motion-spring), transform .9s var(--motion-spring);
+}
+.js .card.is-in .card__art,
+.js .season__item.is-in .season__panel,
+.js .map.is-in { clip-path: inset(0 0 0 0 round 999px 999px 22px 22px); }
+
+/* Card spotlight follows the pointer without an extra DOM layer. */
+.card {
+  --spot-x: 50%;
+  --spot-y: 15%;
+  position: relative;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  border-radius: inherit;
+  background: radial-gradient(260px circle at var(--spot-x) var(--spot-y), rgba(255,255,255,.24), transparent 66%);
+  transition: opacity .45s var(--motion-smooth);
+}
+.card:hover::before { opacity: 1; }
+.card__photo { transform: translate3d(0, calc(var(--photo-depth, 0) * 1px), 0) scale(1.01); }
+.card:hover .card__photo { transform: translate3d(0, calc(var(--photo-depth, 0) * 1px), 0) scale(1.07); }
+
+/* Более дорогая реакция карточек каталога. */
+.card,
+.season__panel,
+.service,
+.why__item,
+.map__card {
+  transition-timing-function: var(--motion-spring);
+}
+.card:hover { transform: translate3d(0, -8px, 0); }
+.season__item:hover .season__panel { transform: translate3d(0, -10px, 0); }
+
+/* Бегущая строка спокойно уступает место курсору. */
+.ticker__track { animation-timing-function: linear; }
+.ticker:hover .ticker__track { animation-play-state: paused; }
+
+/* Услуги раскрываются лёгким подсветом строки. */
+.service {
+  position: relative;
+  isolation: isolate;
+}
+.service::before {
+  content: '';
+  position: absolute;
+  inset: 0 -12px;
+  z-index: -1;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(218,143,166,.12), transparent 72%);
+  opacity: 0;
+  transform: scaleX(.96);
+  transform-origin: left;
+  transition: opacity .45s var(--motion-smooth), transform .65s var(--motion-spring);
+}
+.service:hover::before { opacity: 1; transform: scaleX(1); }
+.service:hover .service__num { color: var(--rose-deep); transform: translateX(5px); }
+.service__num { transition: color .35s var(--motion-smooth), transform .45s var(--motion-spring); }
+
+/* Tactile buttons and ripple. */
+.btn,
+.service__cta,
+.card__add,
+.icon-btn { will-change: transform; }
+.btn[data-magnetic] { transition: transform .55s var(--motion-spring), box-shadow .35s var(--motion-smooth), background .35s var(--motion-smooth), color .35s var(--motion-smooth); }
+.motion-ripple {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: rgba(255,255,255,.34);
+  transform: translate(-50%, -50%) scale(0);
+  animation: motion-ripple .7s var(--motion-smooth) forwards;
+}
+.btn, .card__add { position: relative; overflow: hidden; }
+@keyframes motion-ripple {
+  to { opacity: 0; transform: translate(-50%, -50%) scale(20); }
+}
+
+/* FAQ gets a quiet animated marker instead of a jump. */
+.faq__item summary::after { transition: transform .55s var(--motion-spring), color .3s var(--motion-smooth); }
+.faq__item[open] summary::after { transform: rotate(45deg); }
+.faq__answer { animation: motion-answer .55s var(--motion-spring) both; }
+@keyframes motion-answer {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Contact map has a slow ambient drift. */
+.map__grid { transform: translate3d(calc(var(--map-x, 0) * 1px), calc(var(--map-y, 0) * 1px), 0); transition: transform 1.2s var(--motion-spring); }
+.map:hover .map__grid { --map-x: -5; --map-y: -3; }
+
+/* Respect reduced-motion at the same level as the base stylesheet. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-progress { display: none; }
+  .js .hero__eyebrow,
+  .js .hero__lead,
+  .js .hero__actions,
+  .js .facts,
+  .js .hero__visual,
+  .js .hero__foot,
+  .js .hero__line {
+    animation: none !important;
+    clip-path: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero__visual,
+  .arch__panel,
+  .arch__photo,
+  .card__photo { transform: none !important; }
+  .motion-ripple { display: none; }
+}
+
+@media (max-width: 720px) {
+  .js .hero__line { animation-duration: .8s; }
+  .hero__visual { transform: translate3d(0, calc(var(--hero-depth, 0) * -.45px), 0); }
+  .card::before { display: none; }
+}
+
+/* Mobile motion stays subtle and never causes horizontal overflow. */
+@media (max-width: 640px) {
+  .js .hero__eyebrow,
+  .js .hero__lead,
+  .js .hero__actions,
+  .js .facts,
+  .js .hero__visual,
+  .js .hero__foot { animation-duration: .75s; }
+  .js .reveal { transition-duration: .7s; }
+  .js .card__art,
+  .js .season__panel,
+  .js .map,
+  .js .arch__panel { transition-duration: .8s; }
+  .card:hover,
+  .season__item:hover .season__panel { transform: none; }
+  .card:hover .card__photo,
+  .card__photo { transform: translate3d(0, calc(var(--photo-depth, 0) * .5px), 0) scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal,
+  .js .card__art,
+  .js .season__panel,
+  .js .map,
+  .js .arch__panel { transition: none !important; }
+}
+
+/* Final motion polish: isolate effects to capable pointers and keep focus states tactile. */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover::before { opacity: 1; }
+  .card:hover .card__photo {
+    transform: translate3d(0, calc(var(--photo-depth, 0) * 1px), 0) scale(1.07);
+  }
+  .season__item:hover .season__panel { transform: translate3d(0, -10px, 0); }
+  .map:hover .map__grid { --map-x: -5; --map-y: -3; }
+}
+.card:focus-within::before { opacity: 1; }
+
+/* The arch panel is a reveal target itself, not only a child of .arch. */
+.js .arch__panel {
+  clip-path: inset(0 0 0 0 round 999px 999px 22px 22px);
+  transition: transform .9s var(--motion-spring);
+}
+
+/* State hook used when the OS motion preference changes at runtime. */
+.motion-reduced .motion-progress,
+.motion-reduced .motion-ripple { display: none !important; }
+.motion-reduced .hero__visual,
+.motion-reduced .arch__panel,
+.motion-reduced .arch__photo,
+.motion-reduced .card__photo,
+.motion-reduced .map__grid {
+  transform: none !important;
+}
+.motion-reduced .js .reveal,
+.motion-reduced .js .card__art,
+.motion-reduced .js .season__panel,
+.motion-reduced .js .map,
+.motion-reduced .js .arch__panel {
+  clip-path: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .motion-reduced *,
+  .motion-reduced *::before,
+  .motion-reduced *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===================== Полировка: живой hero, блик кнопки, плавающий ценник ===================== */
+@keyframes motion-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(3deg); }
+  50% { transform: translate3d(0, -7px, 0) rotate(3deg); }
+}
+.js .arch__aka { animation: motion-float 6s var(--motion-smooth) infinite; }
+
+@keyframes motion-gradient {
+  from { background-position: 0% 50%; }
+  to { background-position: 220% 50%; }
+}
+.hero__line em {
+  background: linear-gradient(100deg, var(--rose-deep) 30%, var(--gold) 50%, var(--rose-deep) 70%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: motion-gradient 8s linear infinite;
+}
+
+.btn--primary { overflow: hidden; }
+.btn--primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .22), transparent);
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+}
+@keyframes motion-shine {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to { transform: translateX(260%) skewX(-18deg); }
+}
+.btn--primary:hover::after { animation: motion-shine .9s var(--motion-smooth); }
+
+@media (prefers-reduced-motion: reduce) {
+  .js .arch__aka,
+  .hero__line em,
+  .btn--primary:hover::after { animation: none !important; }
+}
+.motion-reduced .js .arch__aka,
+.motion-reduced .hero__line em,
+.motion-reduced .btn--primary:hover::after { animation: none !important; }
